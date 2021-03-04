@@ -10,37 +10,40 @@ import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.world.chunk.Chunk;
 
 public class OcclusionCullingInstance {
-
-	public static Vector3d[] targets = new Vector3d[5];
 	
 	public boolean isAABBVisible(Vector3d aabbBlock, AxisAlignedBB aabb, Vector3d playerLoc, boolean entity) {
 		try {
-			double width = aabb.getWidth();
-			double height = aabb.getHeight();
-			double depth = aabb.getDepth();
-			Vector3d center = entity ? aabbBlock.add(0, height/2, 0) : aabb.getAABBMiddle(aabbBlock);
-			Vector3d centerXZMin = center.add(-width / 2, 0, depth / 2);
-			Vector3d centerXMZMax = center.add(width / 2, 0, -depth / 2);
-			Vector3d centerYMin = center.add(0, -height / 2, 0);
-			Vector3d centerYMax = center.add(0, height / 2, 0);
-			Vector3d centerZMXMin = center.add(-width / 2, 0, -depth / 2);
-			Vector3d centerZXMax = center.add(width / 2, 0, depth / 2);
-			
-			targets[0] = center.subtract(playerLoc);
-			targets[1] = centerYMin.subtract(playerLoc);
-			targets[2] = centerYMax.subtract(playerLoc);
-			
-			if(centerXZMin.squareDistanceTo(playerLoc) > centerXMZMax.squareDistanceTo(playerLoc)) {
-				targets[3] = centerXZMin.subtract(playerLoc);
-			}else {
-				targets[3] = centerXMZMax.subtract(playerLoc);
+			if (entity) {
+				aabb.maxx -= aabbBlock.x;
+				aabb.minx -= aabbBlock.x;
+				aabb.maxy -= aabbBlock.y;
+				aabb.miny -= aabbBlock.y;
+				aabb.maxz -= aabbBlock.z;
+				aabb.minz -= aabbBlock.z;
 			}
-			if(centerZMXMin.squareDistanceTo(playerLoc) > centerZXMax.squareDistanceTo(playerLoc)) {
-				targets[4] = centerZMXMin.subtract(playerLoc);
-			}else {
-				targets[4] = centerZXMax.subtract(playerLoc);
+			aabbBlock = aabbBlock.subtract(((int)playerLoc.x), ((int)playerLoc.y), ((int)playerLoc.z));
+			int maxX = (int) Math.ceil(aabbBlock.x + aabb.maxx + 0.25);
+			int maxY = (int) Math.ceil(aabbBlock.y + aabb.maxy + 0.25);
+			int maxZ = (int) Math.ceil(aabbBlock.z + aabb.maxz + 0.25);
+			int minX = (int) Math.floor(aabbBlock.x + aabb.minx - 0.25);
+			int minY = (int) Math.floor(aabbBlock.y + aabb.miny - 0.25);
+			int minZ = (int) Math.floor(aabbBlock.z + aabb.minz - 0.25);
+
+			for (int x = minX; x < maxX; x++) {
+				if (!(x == minX || x == maxX - 1))
+					continue;
+				for (int y = minY; y < maxY; y++) {
+					if (!(y == minY || y == maxY - 1))
+						continue;
+					for (int z = minZ; z < maxZ; z++) {
+						if (!(z == minZ || z == maxZ - 1))
+							continue;
+						if (isVoxelVisible(playerLoc, new Vector3d(x, y, z))) {
+							return true;
+						}
+					}
+				}
 			}
-			if(isVisible(playerLoc, targets))return true;
 
 			return false;
 
@@ -48,6 +51,19 @@ public class OcclusionCullingInstance {
 			exception.printStackTrace();
 		}
 		return true;
+	}
+
+	private boolean isVoxelVisible(Vector3d playerLoc, Vector3d position) {
+		Vector3d[] targets = new Vector3d[8];
+		targets[0] = position;
+		targets[1] = position.add(0.95, 0, 0);
+		targets[2] = position.add(0, 0.95, 0);
+		targets[3] = position.add(0.95, 0.95, 0);
+		targets[4] = position.add(0, 0, 0.95);
+		targets[5] = position.add(0.95, 0, 0.95);
+		targets[6] = position.add(0, 0.95, 0.95);
+		targets[7] = position.add(0.95, 0.95, 0.95);
+		return isVisible(playerLoc, targets);
 	}
 	
 	private final int reach = 64;
@@ -61,6 +77,8 @@ public class OcclusionCullingInstance {
 	 * returns the grid cells that intersect with this Vector3d<br>
 	 * <a href=
 	 * "http://playtechs.blogspot.de/2007/03/raytracing-on-grid.html">http://playtechs.blogspot.de/2007/03/raytracing-on-grid.html</a>
+	 * 
+	 * Caching assumes that all Vector3d's are inside the same block
 	 */
 	private boolean isVisible(Vector3d start, Vector3d[] targets) {
 		int maxX = 0;
@@ -72,6 +90,22 @@ public class OcclusionCullingInstance {
 			maxZ = Math.max(maxZ, (int)Math.abs(targets[i].z));
 		}
 		if(maxX > reach - 2 || maxY > reach - 2 || maxZ > reach - 2)return false;
+		
+		for(int v = 0; v < targets.length; v++) {//check if target is already known
+			Vector3d target = targets[v];
+			int cx = (int) Math.floor(target.x + reach);
+			int cy = (int) Math.floor(target.y + reach);
+			int cz = (int) Math.floor(target.z + reach);
+			int keyPos = cx + cy * (reach*2) + cz*(reach*2)*(reach*2);
+			int entry = keyPos/4;
+			int offset = (keyPos%4)*2;
+			int cVal = cache[entry] >> offset & 3;
+			if(cVal == 2) {
+				return false;
+			}else if(cVal == 1) {
+				return true;
+			}
+		}
 		
 		for(int v = 0; v < targets.length; v++) {
 			Vector3d target = targets[v];
@@ -165,10 +199,26 @@ public class OcclusionCullingInstance {
 			boolean finished =stepRay(start, x0, y0, z0, x, y, z, dt_dx, dt_dy, dt_dz, n, x_inc, y_inc, z_inc, t_next_y, t_next_x,
 					t_next_z);
 			if(finished) {
+				cacheResult(targets[0], true);
 				return true;
 			}
 		}
+		cacheResult(targets[0], false);
 		return false;
+	}
+	
+	private void cacheResult(Vector3d vector, boolean result) {
+		int cx = (int) Math.floor(vector.x + reach);
+		int cy = (int) Math.floor(vector.y + reach);
+		int cz = (int) Math.floor(vector.z + reach);
+		int keyPos = cx + cy * (reach*2) + cz*(reach*2)*(reach*2);
+		int entry = keyPos/4;
+		int offset = (keyPos%4)*2;
+		if(result) {
+			cache[entry] |= 1 << offset;
+		} else {
+			cache[entry] |= 1 << offset + 1;
+		}
 	}
 	
 	private boolean stepRay(Vector3d start, double x0, double y0, double z0, int x, int y,
@@ -181,7 +231,7 @@ public class OcclusionCullingInstance {
 		ClientWorld world =  Minecraft.getInstance().world;
 		
 		// iterate through all intersecting cells (n times)
-		for (; n > 0; n--) {
+		for (; n > 1; n--) { //n-1 times because we don't want to check the last block
 			int cx = (int) Math.floor((x0 - x) + reach);
 			int cy = (int) Math.floor((y0 - y) + reach);
 			int cz = (int) Math.floor((z0 - z) + reach);
