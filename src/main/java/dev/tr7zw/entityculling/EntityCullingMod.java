@@ -21,7 +21,7 @@ public class EntityCullingMod {
     public final OcclusionCullingInstance culling = new OcclusionCullingInstance(128, new ForgeProvider());
     public Set<TileEntityType<?>> unCullable = new HashSet<>();
     public boolean nametags = true;
-    public boolean debug = true;
+    public boolean debug = false;
     public boolean debugHitboxes = false;
     public static boolean enabled = true; // public static to make it faster for the jvm
     private CullTask cullTask = new CullTask(culling, unCullable);
