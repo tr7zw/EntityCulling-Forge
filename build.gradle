@@ -17,7 +17,7 @@ apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
 apply plugin: 'org.spongepowered.mixin'
 
-version = '1.1.0'
+version = '1.1.1'
 group = 'dev.tr7zw.forge' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = 'entityculling'
 
@@ -133,8 +133,8 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
-    compile "com.logisticscraft:occlusionculling:0.0.1-SNAPSHOT"
-    extraLibs "com.logisticscraft:occlusionculling:0.0.1-SNAPSHOT"
+    compile "com.logisticscraft:occlusionculling:0.0.2-SNAPSHOT"
+    extraLibs "com.logisticscraft:occlusionculling:0.0.2-SNAPSHOT"
 }
 
 // Example for how to get properties into the manifest for reading by the runtime..
