@@ -28,7 +28,7 @@ public class CullTask implements Runnable {
 	private final int sleepDelay = 10;
 	private final Set<TileEntityType<?>> unCullable;
 	private Vec3d lastPos = new Vec3d(0, 0, 0);
-	private long lastTime = 0;
+	public long lastTime = 0;
 
 	public CullTask(OcclusionCullingInstance culling, Set<TileEntityType<?>> unCullable) {
 		this.culling = culling;
@@ -42,7 +42,7 @@ public class CullTask implements Runnable {
 				Thread.sleep(sleepDelay);
 
 				if (EntityCullingMod.enabled && client.world != null && client.player != null && client.player.ticksExisted > 10) {
-				    Vector3d cameraMC = EntityCullingMod.instance.debug
+				    Vector3d cameraMC = EntityCullingMod.instance.config.debugMode
                             ? client.player.getEyePosition(client.getRenderPartialTicks())
                             : client.gameRenderer.getActiveRenderInfo().getProjectedView();
 					Vec3d camera = new Vec3d(cameraMC.x, cameraMC.y, cameraMC.z);
@@ -115,8 +115,6 @@ public class CullTask implements Runnable {
 						}
 						lastTime = (System.currentTimeMillis()-start);
 					}
-					if(!client.debug.contains("CullTime"))
-						client.debug += " CullTime: " + lastTime + "ms"; // Bit hacky, but works for now :shrug:
 				}
 			} catch (Exception e) {
 				e.printStackTrace();

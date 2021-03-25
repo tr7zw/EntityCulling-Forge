@@ -11,7 +11,8 @@
     "EntityRendererMixin",
     "CullableMixin",
     "EntityMixin",
-    "DataTrackerMixin"
+    "DataTrackerMixin",
+    "DebugHudMixin"
   ],
   "injectors": {
     "defaultRequire": 1
