@@ -64,6 +64,10 @@ public class EntityCullingMod {
         if (config == null) {
             config = new Config();
             writeConfig();
+        } else {
+            if(ConfigUpgrader.upgradeConfig(config)) {
+                writeConfig(); // Config got modified
+            }
         }
         for(String blockId : config.blockEntityWhitelist) {
             Optional<TileEntityType<?>> block = Registry.BLOCK_ENTITY_TYPE.getOptional(new ResourceLocation(blockId));
