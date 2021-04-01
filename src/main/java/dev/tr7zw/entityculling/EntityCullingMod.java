@@ -12,10 +12,15 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.logisticscraft.occlusionculling.OcclusionCullingInstance;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.player.ClientPlayerEntity;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.Util;
 import net.minecraft.util.registry.Registry;
+import net.minecraft.util.text.StringTextComponent;
+import net.minecraft.util.text.TextFormatting;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent.ClientTickEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
@@ -92,6 +97,18 @@ public class EntityCullingMod {
                 return;
             pressed = true;
             enabled = !enabled;
+            ClientPlayerEntity player = Minecraft.getInstance().player;
+            if(enabled) {
+                if (player != null) {
+                    player.sendMessage(new StringTextComponent("Culling on").mergeStyle(TextFormatting.GREEN),
+                            Util.DUMMY_UUID);
+                }
+            } else {
+                if (player != null) {
+                    player.sendMessage(new StringTextComponent("Culling off").mergeStyle(TextFormatting.RED),
+                            Util.DUMMY_UUID);
+                }
+            }
         } else {
             pressed = false;
         }
