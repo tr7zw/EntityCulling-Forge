@@ -3,7 +3,7 @@ loaderVersion="[35,)"
 license="MIT"
 [[mods]]
 modId="entityculling"
-version="1.2.0"
+version="1.2.1"
 displayName="EntityCulling"
 authors="tr7zw"
 description='''
