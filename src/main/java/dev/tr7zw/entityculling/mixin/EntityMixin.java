@@ -28,7 +28,9 @@ public class EntityMixin implements EntityAccessor {
 	}
 	
 	private boolean getUnsafeFlag(int index) {
-		return ((Byte) ((DataTrackerAccessor)dataManager).getUnsafe(FLAGS) & 1 << index) != 0;
+	    Byte flagValues = ((DataTrackerAccessor)dataManager).getUnsafe(FLAGS);
+	    if(flagValues == null)return false;
+		return ((Byte) flagValues & 1 << index) != 0;
 	}
 
 }

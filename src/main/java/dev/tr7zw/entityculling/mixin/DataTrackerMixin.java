@@ -8,6 +8,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import dev.tr7zw.entityculling.access.DataTrackerAccessor;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.EntityDataManager;
+import net.minecraft.network.datasync.EntityDataManager.DataEntry;
 
 @Mixin(EntityDataManager.class)
 public class DataTrackerMixin implements DataTrackerAccessor {
@@ -18,7 +19,8 @@ public class DataTrackerMixin implements DataTrackerAccessor {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> T getUnsafe(DataParameter<T> trackedData) {
-		return (T) this.entries.get(trackedData.getId()).getValue();
+	    DataEntry<?> entry = this.entries.get(trackedData.getId());
+		return  entry == null ? null : (T) entry.getValue();
 	}
 
 }
