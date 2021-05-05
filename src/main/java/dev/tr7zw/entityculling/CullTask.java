@@ -15,7 +15,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.world.chunk.Chunk;
 
 public class CullTask implements Runnable {
@@ -47,7 +46,7 @@ public class CullTask implements Runnable {
 				Thread.sleep(sleepDelay);
 
 				if (EntityCullingMod.enabled && client.world != null && client.player != null && client.player.ticksExisted > 10) {
-				    Vector3d cameraMC = EntityCullingMod.instance.config.debugMode
+				    net.minecraft.util.math.Vec3d cameraMC = EntityCullingMod.instance.config.debugMode
                             ? client.player.getEyePosition(client.getRenderPartialTicks())
                             : client.gameRenderer.getActiveRenderInfo().getProjectedView();
 					if (requestCull || !(cameraMC.x == lastPos.x && cameraMC.y == lastPos.y && cameraMC.z == lastPos.z)) {
@@ -105,7 +104,7 @@ public class CullTask implements Runnable {
 								if (spectator || ((EntityAccessor)entity).isUnsafeGlowing()) {
 									cullable.setCulled(false);
 								} else {
-								    if(entity.getPositionVec().isWithinDistanceOf(cameraMC, 128)) { // Max supported range currently for this mod
+								    if(entity.getPositionVec().squareDistanceTo(cameraMC) < 128*128) { // Max supported range currently for this mod
 								        net.minecraft.util.math.AxisAlignedBB boundingBox = entity.getRenderBoundingBox();
 								        if(boundingBox.getXSize() > hitboxLimit || boundingBox.getYSize() > hitboxLimit || boundingBox.getZSize() > hitboxLimit) {
                                             cullable.setCulled(false); // To big to bother to cull

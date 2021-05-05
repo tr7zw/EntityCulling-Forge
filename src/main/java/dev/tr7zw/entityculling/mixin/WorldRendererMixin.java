@@ -17,7 +17,7 @@ import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.vector.Vector3d;
+import net.minecraft.util.math.Vec3d;
 
 @Mixin(WorldRenderer.class)
 public class WorldRendererMixin {
@@ -46,13 +46,13 @@ public class WorldRendererMixin {
                         - cameraY;
                 double z = MathHelper.lerp((double) tickDelta, (double) entity.lastTickPosZ, (double) entity.getPosZ())
                         - cameraZ;
-                Vector3d Vector3d = entityRenderer.getRenderOffset(entity, tickDelta);
+                Vec3d Vector3d = entityRenderer.getRenderOffset(entity, tickDelta);
                 double d = x + Vector3d.getX();
                 double e = y + Vector3d.getY();
                 double f = z + Vector3d.getZ();
                 matrices.push();
                 matrices.translate(d, e, f);
-                entityRendererInter.shadowRenderLabelIfPresent(entity, entity.getDisplayName(), matrices,
+                entityRendererInter.shadowRenderLabelIfPresent(entity, entity.getDisplayName().getFormattedText(), matrices,
                         vertexConsumers, this.renderManager.getPackedLight(entity, tickDelta));
                 matrices.pop();
             }

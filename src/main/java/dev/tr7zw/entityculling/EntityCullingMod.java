@@ -19,7 +19,6 @@ import net.minecraft.client.entity.player.ClientPlayerEntity;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.Util;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TextFormatting;
@@ -81,7 +80,7 @@ public class EntityCullingMod {
             }
         }
         for(String blockId : config.blockEntityWhitelist) {
-            Optional<TileEntityType<?>> block = Registry.BLOCK_ENTITY_TYPE.getOptional(new ResourceLocation(blockId));
+            Optional<TileEntityType<?>> block = Registry.BLOCK_ENTITY_TYPE.getValue(new ResourceLocation(blockId));
             block.ifPresent(b -> {
                 unCullable.add(b);
             });
@@ -108,13 +107,11 @@ public class EntityCullingMod {
             ClientPlayerEntity player = Minecraft.getInstance().player;
             if(enabled) {
                 if (player != null) {
-                    player.sendMessage(new StringTextComponent("Culling on").mergeStyle(TextFormatting.GREEN),
-                            Util.DUMMY_UUID);
+                    player.sendMessage(new StringTextComponent("Culling on").applyTextStyle(TextFormatting.GREEN));
                 }
             } else {
                 if (player != null) {
-                    player.sendMessage(new StringTextComponent("Culling off").mergeStyle(TextFormatting.RED),
-                            Util.DUMMY_UUID);
+                    player.sendMessage(new StringTextComponent("Culling off").applyTextStyle(TextFormatting.RED));
                 }
             }
         } else {

@@ -10,7 +10,7 @@ public interface EntityRendererInter<T extends Entity> {
 
 	boolean shadowHasLabel(T entity);
 
-	void shadowRenderLabelIfPresent(T entity, ITextComponent text, MatrixStack matrices, IRenderTypeBuffer vertexConsumers,
+	void shadowRenderLabelIfPresent(T entity, String text, MatrixStack matrices, IRenderTypeBuffer vertexConsumers,
 			int light);
 
 }
