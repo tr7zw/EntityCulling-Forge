@@ -43,7 +43,7 @@ public class EntityCullingMod {
     public static boolean enabled = true; // public static to make it faster for the jvm
     public CullTask cullTask;
     private Thread cullThread;
-    private KeyBinding keybind = new KeyBinding("key.entityculling.toggle", -1, "EntityCulling");
+    private KeyBinding keybind;
     private boolean pressed = false;
 
     public Config config;
@@ -68,6 +68,7 @@ public class EntityCullingMod {
         }
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
         MinecraftForge.EVENT_BUS.addListener(this::doTick);
+        keybind = new KeyBinding("key.entityculling.toggle", -1, "EntityCulling");
     }
 
     private void setup(final FMLCommonSetupEvent event) {
