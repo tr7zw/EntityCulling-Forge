@@ -133,7 +133,7 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
-    compile "com.logisticscraft:occlusionculling:0.0.4-SNAPSHOT"
+    compile "com.logisticscraft:occlusionculling:0.0.5-SNAPSHOT"
     extraLibs "com.logisticscraft:occlusionculling:0.0.5-SNAPSHOT"
 }
 
