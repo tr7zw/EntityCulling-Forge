@@ -69,6 +69,8 @@ public class EntityCullingMod {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
         MinecraftForge.EVENT_BUS.addListener(this::doTick);
         keybind = new KeyBinding("key.entityculling.toggle", -1, "EntityCulling");
+        ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.DISPLAYTEST,
+        () -> Pair.of(() -> FMLNetworkConstants.IGNORESERVERONLY, (remote, isServer) -> true));
     }
 
     private void setup(final FMLCommonSetupEvent event) {
@@ -106,8 +108,6 @@ public class EntityCullingMod {
         });
         cullThread.start();
         ClientRegistry.registerKeyBinding(keybind);
-        ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.DISPLAYTEST,
-                () -> Pair.of(() -> FMLNetworkConstants.IGNORESERVERONLY, (remote, isServer) -> true));
     }
 
     private void doTick(ClientTickEvent event) {
