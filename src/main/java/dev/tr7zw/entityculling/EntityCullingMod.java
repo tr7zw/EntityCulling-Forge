@@ -50,6 +50,8 @@ public class EntityCullingMod {
     private final File settingsFile = new File("config", "entityculling.json");
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     
+    private boolean onServer = false;
+
     //stats
     public int renderedBlockEntities = 0;
     public int skippedBlockEntities = 0;
@@ -57,11 +59,19 @@ public class EntityCullingMod {
     public int skippedEntities = 0;
     
     public EntityCullingMod() {
+        try {
+            Class clientClass = net.minecraft.client.MinecraftGame.class;
+        }catch(Throwable ex) {
+            System.out.println("EntityCulling Mod installed on a Server. Going to sleep.");
+            onServer = true;
+            return;
+        }
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
         MinecraftForge.EVENT_BUS.addListener(this::doTick);
     }
 
     private void setup(final FMLCommonSetupEvent event) {
+        if(onServer)return;
         instance = this;
         if (settingsFile.exists()) {
             try {
