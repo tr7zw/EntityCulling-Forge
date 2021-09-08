@@ -4,14 +4,15 @@ import org.spongepowered.asm.mixin.Mixin;
 
 import dev.tr7zw.entityculling.EntityCullingMod;
 import dev.tr7zw.entityculling.access.Cullable;
-import net.minecraft.entity.Entity;
-import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
-@Mixin(value = { Entity.class, TileEntity.class })
+@Mixin(value = { Entity.class, BlockEntity.class })
 public class CullableMixin implements Cullable {
 
 	private long lasttime = 0;
 	private boolean culled = false;
+	private boolean outOfCamera = false;
 	
 	@Override
 	public void setTimeout() {
@@ -33,8 +34,19 @@ public class CullableMixin implements Cullable {
 
 	@Override
 	public boolean isCulled() {
-	    if(!EntityCullingMod.enabled)return false;
+		if(!EntityCullingMod.enabled)return false;
 		return culled;
 	}
+
+    @Override
+    public void setOutOfCamera(boolean value) {
+        this.outOfCamera = value;
+    }
+
+    @Override
+    public boolean isOutOfCamera() {
+        if(!EntityCullingMod.enabled)return false;
+        return outOfCamera;
+    }
 
 }

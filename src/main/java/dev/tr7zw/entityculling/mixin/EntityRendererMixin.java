@@ -3,33 +3,33 @@ package dev.tr7zw.entityculling.mixin;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.vertex.PoseStack;
 
 import dev.tr7zw.entityculling.access.EntityRendererInter;
-import net.minecraft.client.renderer.IRenderTypeBuffer;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderer;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.text.ITextComponent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Entity;
 
 @Mixin(EntityRenderer.class)
 public abstract class EntityRendererMixin<T extends Entity> implements EntityRendererInter<T> {
 
 	@Override
-	public boolean shadowHasLabel(T entity) {
-		return canRenderName(entity);
+	public boolean shadowShouldShowName(T entity) {
+		return shouldShowName(entity);
 	}
-
+	
 	@Override
-	public void shadowRenderLabelIfPresent(T entity, ITextComponent text, MatrixStack matrices,
-			IRenderTypeBuffer vertexConsumers, int light) {
-		renderName(entity, text, matrices, vertexConsumers, light);
+	public void shadowRenderNameTag(T entity, Component component, PoseStack poseStack,
+            MultiBufferSource multiBufferSource, int light) {
+	    renderNameTag(entity, component, poseStack, multiBufferSource, light);
 	}
-
+	
 	@Shadow
-	public abstract boolean canRenderName(T entity);
-
+	public abstract boolean shouldShowName(T entity);
+	
 	@Shadow
-	public abstract void renderName(T entityIn, ITextComponent displayNameIn, MatrixStack matrixStackIn,
-			IRenderTypeBuffer bufferIn, int packedLightIn);
-
+	public abstract void renderNameTag(T entity, Component component, PoseStack poseStack,
+            MultiBufferSource multiBufferSource, int i);
+	
 }

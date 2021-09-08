@@ -8,59 +8,61 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
-import org.apache.commons.lang3.tuple.Pair;
-
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.logisticscraft.occlusionculling.OcclusionCullingInstance;
 
+import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.player.ClientPlayerEntity;
-import net.minecraft.client.settings.KeyBinding;
-import net.minecraft.tileentity.TileEntityType;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.Util;
-import net.minecraft.util.registry.Registry;
-import net.minecraft.util.text.StringTextComponent;
-import net.minecraft.util.text.TextFormatting;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.Registry;
+import net.minecraft.network.chat.TextComponent;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent.ClientTickEvent;
-import net.minecraftforge.fml.ExtensionPoint;
+import net.minecraftforge.fml.IExtensionPoint;
 import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fml.network.FMLNetworkConstants;
+import net.minecraftforge.fmlclient.registry.ClientRegistry;
 
 @Mod("entityculling")
 public class EntityCullingMod {
 
     public static EntityCullingMod instance;
     public OcclusionCullingInstance culling;
-    public Set<TileEntityType<?>> unCullable = new HashSet<>();
+    public Set<BlockEntityType<?>> unCullable = new HashSet<>();
+    public Set<EntityType<?>> tickCullWhistelist = new HashSet<>();
     public boolean debugHitboxes = false;
     public static boolean enabled = true; // public static to make it faster for the jvm
     public CullTask cullTask;
     private Thread cullThread;
-    private KeyBinding keybind;
+    private KeyMapping keybind = new KeyMapping("key.entityculling.toggle", -1, "EntityCulling");
     private boolean pressed = false;
-
+    
     public Config config;
     private final File settingsFile = new File("config", "entityculling.json");
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     
-    private boolean onServer = false;
-
     //stats
     public int renderedBlockEntities = 0;
     public int skippedBlockEntities = 0;
     public int renderedEntities = 0;
     public int skippedEntities = 0;
+    public int tickedEntities = 0;
+    public int skippedEntityTicks = 0;
+    
+    //Forge only
+    private boolean onServer = false;
     
     public EntityCullingMod() {
         try {
-            Class clientClass = net.minecraft.client.MinecraftGame.class;
+            Class clientClass = net.minecraft.client.Minecraft.class;
         }catch(Throwable ex) {
             System.out.println("EntityCulling Mod installed on a Server. Going to sleep.");
             onServer = true;
@@ -68,9 +70,8 @@ public class EntityCullingMod {
         }
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
         MinecraftForge.EVENT_BUS.addListener(this::doTick);
-        keybind = new KeyBinding("key.entityculling.toggle", -1, "EntityCulling");
-        ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.DISPLAYTEST,
-        () -> Pair.of(() -> FMLNetworkConstants.IGNORESERVERONLY, (remote, isServer) -> true));
+        keybind = new KeyMapping("key.entityculling.toggle", -1, "EntityCulling");
+        ModLoadingContext.get().registerExtensionPoint(IExtensionPoint.DisplayTest.class, () -> new IExtensionPoint.DisplayTest(() -> ModLoadingContext.get().getActiveContainer().getModInfo().getVersion().toString(), (remote, isServer) -> true));
     }
 
     private void setup(final FMLCommonSetupEvent event) {
@@ -94,12 +95,18 @@ public class EntityCullingMod {
             }
         }
         for(String blockId : config.blockEntityWhitelist) {
-            Optional<TileEntityType<?>> block = Registry.BLOCK_ENTITY_TYPE.getOptional(new ResourceLocation(blockId));
+            Optional<BlockEntityType<?>> block = Registry.BLOCK_ENTITY_TYPE.getOptional(new ResourceLocation(blockId));
             block.ifPresent(b -> {
                 unCullable.add(b);
             });
         }
-        culling = new OcclusionCullingInstance(config.tracingDistance, new ForgeProvider());
+        for(String entityType : config.tickCullingWhitelist) {
+                Optional<EntityType<?>> entity = Registry.ENTITY_TYPE.getOptional(new ResourceLocation(entityType));
+                entity.ifPresent(e -> {
+                    tickCullWhistelist.add(e);
+                });
+        }
+        culling = new OcclusionCullingInstance(config.tracingDistance, new Provider());
         cullTask = new CullTask(culling, unCullable);
         cullThread = new Thread(cullTask, "CullThread");
         cullThread.setUncaughtExceptionHandler((thread, ex) -> {
@@ -111,21 +118,21 @@ public class EntityCullingMod {
     }
 
     private void doTick(ClientTickEvent event) {
-        if (keybind.isPressed()) {
+        if (keybind.isDown()) {
             if (pressed)
                 return;
             pressed = true;
             enabled = !enabled;
-            ClientPlayerEntity player = Minecraft.getInstance().player;
+            LocalPlayer player = Minecraft.getInstance().player;
             if(enabled) {
                 if (player != null) {
-                    player.sendMessage(new StringTextComponent("Culling on").mergeStyle(TextFormatting.GREEN),
-                            Util.DUMMY_UUID);
+                    player.sendMessage(new TextComponent("Culling on").withStyle(ChatFormatting.GREEN),
+                            Util.NIL_UUID);
                 }
             } else {
                 if (player != null) {
-                    player.sendMessage(new StringTextComponent("Culling off").mergeStyle(TextFormatting.RED),
-                            Util.DUMMY_UUID);
+                    player.sendMessage(new TextComponent("Culling off").withStyle(ChatFormatting.RED),
+                            Util.NIL_UUID);
                 }
             }
         } else {

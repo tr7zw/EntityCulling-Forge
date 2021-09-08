@@ -9,33 +9,33 @@ import com.logisticscraft.occlusionculling.OcclusionCullingInstance;
 import com.logisticscraft.occlusionculling.util.Vec3d;
 
 import dev.tr7zw.entityculling.access.Cullable;
-import dev.tr7zw.entityculling.access.EntityAccessor;
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.Entity;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.tileentity.TileEntityType;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.world.chunk.Chunk;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 public class CullTask implements Runnable {
 
 	public boolean requestCull = false;
 
 	private final OcclusionCullingInstance culling;
-	private final Minecraft client = Minecraft.getInstance();
+    private final Minecraft client = Minecraft.getInstance();
 	private final int sleepDelay = EntityCullingMod.instance.config.sleepDelay;
 	private final int hitboxLimit = EntityCullingMod.instance.config.hitboxLimit;
-	private final Set<TileEntityType<?>> unCullable;
+	private final Set<BlockEntityType<?>> unCullable;
 	public long lastTime = 0;
-
-	// reused preallocated vars
-    private Vec3d lastPos = new Vec3d(0, 0, 0);
-    private Vec3d aabbMin = new Vec3d(0, 0, 0);
-    private Vec3d aabbMax = new Vec3d(0, 0, 0);
-
 	
-	public CullTask(OcclusionCullingInstance culling, Set<TileEntityType<?>> unCullable) {
+	// reused preallocated vars
+	private Vec3d lastPos = new Vec3d(0, 0, 0);
+	private Vec3d aabbMin = new Vec3d(0, 0, 0);
+	private Vec3d aabbMax = new Vec3d(0, 0, 0);
+
+	public CullTask(OcclusionCullingInstance culling, Set<BlockEntityType<?>> unCullable) {
 		this.culling = culling;
 		this.unCullable = unCullable;
 	}
@@ -46,23 +46,24 @@ public class CullTask implements Runnable {
 			try {
 				Thread.sleep(sleepDelay);
 
-				if (EntityCullingMod.enabled && client.world != null && client.player != null && client.player.ticksExisted > 10) {
-				    Vector3d cameraMC = EntityCullingMod.instance.config.debugMode
-                            ? client.player.getEyePosition(client.getRenderPartialTicks())
-                            : client.gameRenderer.getActiveRenderInfo().getProjectedView();
+				if (EntityCullingMod.enabled && client.level != null && client.player != null && client.player.tickCount > 10) {
+				    Vec3 cameraMC = EntityCullingMod.instance.config.debugMode
+                            ? client.player.getEyePosition(client.getDeltaFrameTime())
+                            : client.gameRenderer.getMainCamera().getPosition();
+					
 					if (requestCull || !(cameraMC.x == lastPos.x && cameraMC.y == lastPos.y && cameraMC.z == lastPos.z)) {
 						long start = System.currentTimeMillis();
 						requestCull = false;
 						lastPos.set(cameraMC.x, cameraMC.y, cameraMC.z);
-                        Vec3d camera = lastPos;
+						Vec3d camera = lastPos;
 						culling.resetCache();
 						boolean spectator = client.player.isSpectator();
 						for (int x = -8; x <= 8; x++) {
 							for (int z = -8; z <= 8; z++) {
-							    Chunk chunk = client.world.getChunk(client.player.chunkCoordX + x,
-                                        client.player.chunkCoordZ + z);
-								Iterator<Entry<BlockPos, TileEntity>> iterator = chunk.getTileEntityMap().entrySet().iterator();
-								Entry<BlockPos, TileEntity> entry;
+							    LevelChunk chunk = client.level.getChunk(client.player.chunkPosition().x + x,
+                                        client.player.chunkPosition().z + z);
+								Iterator<Entry<BlockPos, BlockEntity>> iterator = chunk.getBlockEntities().entrySet().iterator();
+								Entry<BlockPos, BlockEntity> entry;
 								while(iterator.hasNext()) {
 									try {
 										entry = iterator.next();
@@ -80,10 +81,10 @@ public class CullTask implements Runnable {
 											continue;
 										}
 										BlockPos pos = entry.getKey();
-										if(pos.withinDistance(cameraMC, 64)) { // 64 is the fixed max tile view distance
+										if(pos.closerThan(cameraMC, 64)) { // 64 is the fixed max tile view distance
 										    aabbMin.set(pos.getX(), pos.getY(), pos.getZ());
-                                            aabbMax.set(pos.getX()+1d, pos.getY()+1d, pos.getZ()+1d);
-                                            boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
+										    aabbMax.set(pos.getX()+1d, pos.getY()+1d, pos.getZ()+1d);
+    										boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
     										cullable.setCulled(!visible);
 										}
 									}
@@ -92,7 +93,7 @@ public class CullTask implements Runnable {
 							}
 						}
 						Entity entity = null;
-						Iterator<Entity> iterable = client.world.getAllEntities().iterator();
+						Iterator<Entity> iterable = client.level.entitiesForRendering().iterator();
 						while (iterable.hasNext()) {
 							try {
 								entity = iterable.next();
@@ -100,25 +101,28 @@ public class CullTask implements Runnable {
 								break; // We are not synced to the main thread, so NPE's/CME are allowed here and way less
 										// overhead probably than trying to sync stuff up for no really good reason
 							}
+							if(entity == null || !(entity instanceof Cullable)) {
+							    continue; // Not sure how this could happen outside from mixin screwing up the inject into Entity
+							}
 							Cullable cullable = (Cullable) entity;
 							if (!cullable.isForcedVisible()) {
-								if (spectator || ((EntityAccessor)entity).isUnsafeGlowing()) {
+								if (spectator || entity.isCurrentlyGlowing() || isSkippableArmorstand(entity)) {
 									cullable.setCulled(false);
-								} else {
-								    if(entity.getPositionVec().isWithinDistanceOf(cameraMC, 128)) { // Max supported range currently for this mod
-								        net.minecraft.util.math.AxisAlignedBB boundingBox = entity.getRenderBoundingBox();
-								        if(boundingBox.getXSize() > hitboxLimit || boundingBox.getYSize() > hitboxLimit || boundingBox.getZSize() > hitboxLimit) {
-                                            cullable.setCulled(false); // To big to bother to cull
-                                        } else {
-                                            aabbMin.set(boundingBox.minX, boundingBox.minY, boundingBox.minZ);
-                                            aabbMax.set(boundingBox.maxX, boundingBox.maxY, boundingBox.maxZ);
-                                            boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
-        									cullable.setCulled(!visible);
-                                        }
-								    } else {
-								        cullable.setCulled(false); // If your entity view distance is larger than 128 blocks just render it
-								    }
+									continue;
 								}
+							    if(!entity.position().closerThan(cameraMC, EntityCullingMod.instance.config.tracingDistance)) {
+							        cullable.setCulled(false); // If your entity view distance is larger than tracingDistance just render it
+							        continue;
+							    }
+							    AABB boundingBox = entity.getBoundingBoxForCulling();
+							    if(boundingBox.getXsize() > hitboxLimit || boundingBox.getYsize() > hitboxLimit || boundingBox.getZsize() > hitboxLimit) {
+								    cullable.setCulled(false); // To big to bother to cull
+								    continue;
+								}
+							    aabbMin.set(boundingBox.minX, boundingBox.minY, boundingBox.minZ);
+							    aabbMax.set(boundingBox.maxX, boundingBox.maxY, boundingBox.maxZ);
+								boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
+								cullable.setCulled(!visible);
 							}
 						}
 						lastTime = (System.currentTimeMillis()-start);
@@ -129,5 +133,10 @@ public class CullTask implements Runnable {
 			}
 		}
 		System.out.println("Shutting down culling task!");
+	}
+	
+	private boolean isSkippableArmorstand(Entity entity) {
+	    if(!EntityCullingMod.instance.config.skipMarkerArmorStands)return false;
+	    return entity instanceof ArmorStand && ((ArmorStand) entity).isMarker();
 	}
 }
